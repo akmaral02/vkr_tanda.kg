@@ -190,3 +190,55 @@ def cart_count(request):
         })
 
 
+def clear_cart(request):
+    """Clear all items from cart"""
+    cart = get_or_create_cart(request)
+    cart.clear()
+    messages.success(request, 'Корзина очищена')
+    return redirect('cart_view')
+
+
+# Context processor for global cart access
+def cart_context(request):
+    """Add cart info to all templates"""
+    try:
+        cart = get_or_create_cart(request)
+        return {
+            'cart': cart,
+            'cart_count': cart.total_items,
+            'cart_total': cart.total_price
+        }
+    except:
+        return {
+            'cart': None,
+            'cart_count': 0,
+            'cart_total': 0
+        }
+
+
+# Merge carts when user logs in
+def merge_carts(user, session_key):
+    """Merge anonymous cart with user cart when user logs in"""
+    try:
+        # Get session cart
+        session_cart = Cart.objects.get(session_key=session_key)
+        
+        # Get or create user cart
+        user_cart, created = Cart.objects.get_or_create(user=user)
+        
+        # Move items from session cart to user cart
+        for item in session_cart.items.all():
+            user_item, created = CartItem.objects.get_or_create(
+                cart=user_cart,
+                product=item.product,
+                defaults={'quantity': item.quantity}
+            )
+            if not created:
+                user_item.quantity += item.quantity
+                user_item.save()
+        
+        # Delete session cart
+        session_cart.delete()
+        
+    except Cart.DoesNotExist:
+        pass  # No session cart to merge
