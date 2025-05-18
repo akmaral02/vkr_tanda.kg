@@ -101,7 +101,53 @@ def notify_producers_about_orders(producers, orders):
             print(f"Failed to notify producer {producer.name}: {e}")
 
 
+def send_email_notification(producer, orders):
+    """Send email notification to producer about new orders"""
+    try:
+        subject = f'Новые заказы на Tanda.kg - {len(orders)} шт.'
+        
+        # Calculate total
+        total_amount = sum(float(order.total_price) for order in orders)
+        
+        # Email content
+        message = f"""
+Здравствуйте, {producer.name}!
 
+У вас новые заказы на Tanda.kg:
+
+"""
+        for order in orders:
+            message += f"""
+Заказ #{order.id}:
+- Товар: {order.product.name}
+- Количество: {order.quantity} шт
+- Сумма: {order.total_price} сом
+- Покупатель: {order.buyer_name}
+- Телефон: {order.buyer_phone if order.buyer_phone else 'не указан'}
+- Email: {order.buyer_email if order.buyer_email else 'не указан'}
+
+"""
+        
+        message += f"""
+Общая сумма: {total_amount:.0f} сом
+
+Для управления заказами войдите в панель производителя:
+https://tanda.kg/users/dashboard/
+
+С уважением,
+Команда Tanda.kg
+"""
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@tanda.kg'),
+            recipient_list=[producer.user.email],
+            fail_silently=True
+        )
+        
+    except Exception as e:
+        print(f"Failed to send email to {producer.name}: {e}")
 
 
 @login_required
